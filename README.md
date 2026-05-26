@@ -22,7 +22,7 @@ node index.js add --description "Mcdonalds" --amount 15.20
 
 node index.js add --description "Gym Membership" --amount 35.00 --date 15/01/2026
 
-## Test using seed.js
+# Test using seed.js
 node seed.js
 
 # View all expenses ever tracked
