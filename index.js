@@ -47,11 +47,12 @@ export function getArgValue(flag) {
     return null;
     // returns null or the argument and index of all the arguments.
 }
-
 export async function addExpense() {
     // Get values
     const description = getArgValue('--description');
     const amountStr = getArgValue('--amount');
+    const dateStr = getArgValue('--date'); 
+
     // Check values (validation)
     if (!description || !amountStr) {
         console.error("oopsie both arguments (description and amounts) are empty!");
@@ -63,22 +64,60 @@ export async function addExpense() {
         console.error("Oopsies this value is not a number or it doesn't have positive number");
         return;
     }
+
+    let targetDate;
+
+    // Check if user passed a custom date
+    if (dateStr) {
+        // Regex pattern to ensure format is strictly dd/mm/yyyy
+        // \d{2} means exactly 2 digits, \d{4} means exactly 4 digits
+        const datePattern = /^\d{2}\/\d{2}\/\d{4}$/;
+
+        if (!datePattern.test(dateStr)) {
+            console.error("Error - date must be in the format dd/mm/yyyy (example: 15/01/2026)");
+            return;
+        }
+
+        // Split the string by the slashes: "15/01/2026" becomes ["15", "01", "2026"]
+        const parts = dateStr.split('/');
+        const day = parts[0];
+        const month = parts[1];
+        const year = parts[2];
+
+        // Validate calendar ranges
+        const mNum = parseInt(month, 10);
+        const dNum = parseInt(day, 10);
+        const yNum = parseInt(year, 10);
+
+        const maxDaysInMonth = new Date(yNum, mNum, 0).getDate();
+
+        //  check months and days in a month 
+        if (mNum < 1 || mNum > 12 || dNum < 1 || dNum > maxDaysInMonth) {
+            console.error("Error - invalid day or month values provided.");
+            return;
+        }
+
+        // Reassemble into the database standard layout: yyyy-mm-dd
+        targetDate = `${year}-${month}-${day}`;
+        
+    } else {
+        // Fall back to todays data if no date argument is passed
+        targetDate = new Date().toISOString().split('T')[0];
+    }
+
     // Open the database connection
     const db = await InitialiseDB();
-
-    // Get todays data
-    const currentDate = new Date().toISOString().split('T')[0];
 
     // Insert date into sqlite
     const result = await db.run(
         `INSERT INTO expenses (date, description, amount) VALUES (?, ?, ?)`,
-        [currentDate, description, amount]
+        [targetDate, description, amount]
     );
 
     console.log(`Wooh expenses added successfully (ID: ${result.lastID})`);
 
-     await db.close();
-}   
+    await db.close();
+}
 
 export async function removeExpense() {
     // Open db connection
@@ -86,6 +125,7 @@ export async function removeExpense() {
     
     // Get id from argument to remove expense
     const idStr = getArgValue(`--id`);
+    const monthStr = getArgValue('--month');
 
     // Check if id exists
     if (!idStr) {
@@ -102,12 +142,36 @@ export async function removeExpense() {
         await db.close(); 
         return;
     }
-    // Removal of row on selected id
-    const result = await db.run(`DELETE FROM expenses WHERE id = ?`, [id]);
+
+    let result;
+
+    // Check if month argument is passed for conditional removal
+    if (monthStr) {
+        const monthNum = parseInt(monthStr, 10);
+        if (isNaN(monthNum) || monthNum < 1 || monthNum > 12) {
+            console.error("Error: month must be a number between 1 and 12.");
+            await db.close();
+            return;
+        }
+        const formattedMonth = monthStr.padStart(2, '0');
+
+        // Removal of row on selected id and matching month
+        result = await db.run(
+            `DELETE FROM expenses WHERE id = ? AND strftime('%m', date) = ?`, 
+            [id, formattedMonth]
+        );
+    } else {
+        // Removal of row on selected id
+        result = await db.run(`DELETE FROM expenses WHERE id = ?`, [id]);
+    }
     
     // Check if the result changed
     if (result.changes === 0) {
-        console.error(`Error: expense with id ${id} not found`);
+        if (monthStr) {
+            console.error(`Error: expense with id ${id} not found in month ${monthStr}`);
+        } else {
+            console.error(`Error: expense with id ${id} not found`);
+        }
     } else {
         console.log(`Expense id found ${id} - expense removed.`);
     }
