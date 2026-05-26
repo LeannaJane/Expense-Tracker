@@ -15,33 +15,32 @@
 3. Command usage:
 Examples:
 
-**Add expense**:
 # Add expenses with descriptions and amounts
 node index.js add --description "Coca cola" --amount 4.50
+
 node index.js add --description "Mcdonalds" --amount 15.20
+
 node index.js add --description "Gym Membership" --amount 35.00 --date 15/01/2026
 
-**Test using seed.js**:
+## Test using seed.js
 node seed.js
 
-**List expenses**:
 # View all expenses ever tracked
 node index.js list
 
 # Filter to view only expenses logged in May (5)
 node index.js list --month 5
 
-**Finacial summary**:
 # View the running total of all expenses combined
 node index.js total
 
-**Remove an expense**:
 # Remove expense no filtering
 node index.js remove --id 2
 ## Remove an expense with month filtering
 node index.js remove --month 5 --id 2
 
 
-
+# Example usage:
+<img width="774" height="555" alt="image" src="https://github.com/user-attachments/assets/64e20dc4-a4bd-4d0f-bd8b-0290386d33f9" />
 
 
