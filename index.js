@@ -54,7 +54,7 @@ export async function addExpense() {
     const amountStr = getArgValue('--amount');
     // Check values (validation)
     if (!description || !amountStr) {
-        console.error("oopsie both arguments (description and amounts) empty!");
+        console.error("oopsie both arguments (description and amounts) are empty!");
         return;
     }
     // Convert amount string into decimal
@@ -118,30 +118,63 @@ export async function removeExpense() {
 
 export async function listExpenses() {
     const db = await InitialiseDB();
-    const expenses = await db.all(`SELECT * FROM expenses`);
+    
+    const monthStr = getArgValue('--month');
+    
+    // Create an array to convert numbers into month names
+    const monthNames = [
+        "January", "February", "March", "April", "May", "June", 
+        "July", "August", "September", "October", "November", "December"
+    ];
+
+    let expenses;
+
+    // If month is passed as an arg, it will be filtered by that month
+    if (monthStr) {
+        const monthNum = parseInt(monthStr, 10);
+        if (isNaN(monthNum) || monthNum < 1 || monthNum > 12) {
+            console.error("Error: month must be a number between 1 and 12.");
+            await db.close();
+            return;
+        }
+
+        // SQLite expects two digits for months (e.g. "05" instead of "5")
+        const formattedMonth = monthStr.padStart(2, '0');
+
+        console.log(`\n Showing expenses for: ${monthNames[monthNum - 1]}`);
+        
+        // Query only matching months using strftime
+        expenses = await db.all(
+            `SELECT * FROM expenses WHERE strftime('%m', date) = ?`, 
+            [formattedMonth]
+        );
+    } else {
+        // shows all expenses
+        console.log(`\nShowing ALL expenses`);
+        expenses = await db.all(`SELECT * FROM expenses`);
+    }
 
     // Validation check and to check for any expenses
     if (expenses.length === 0) {
-        console.log("No expenses found, your wallet is empty");
+        console.log("No expenses found for this selection.");
         await db.close();
         return;
     }
 
-    console.log("\nID   Date        Description                 Amount");
+    console.log("ID   Date        Description                 Amount");
     console.log("====================================================");
     // assign variables from data from the database, then log it into table format.
     expenses.forEach(row => {
         const idStr = row.id.toString().padEnd(4);
         const dateStr = row.date.padEnd(13);
         const descStr = row.description.padEnd(28);
-        const amtStr = `£${row.amount}`
+        const amtStr = `£${row.amount}`;
 
         console.log(`${idStr}${dateStr}${descStr}${amtStr}`);
     });
 
     console.log("");
     await db.close();
-
     return expenses;
 }
 
